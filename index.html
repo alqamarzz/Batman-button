@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Batman Button - Interactive Animation</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      user-select: none;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background-color: #f7f7f8;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      overflow: hidden;
+    }
+
+    .canvas-container {
+      position: relative;
+      width: 520px;
+      height: 380px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    canvas {
+      width: 520px;
+      height: 380px;
+      cursor: pointer;
+    }
+
+    .hint {
+      position: absolute;
+      bottom: 24px;
+      font-size: 13px;
+      color: #9ca3af;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      font-weight: 500;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="canvas-container">
+    <canvas id="stage"></canvas>
+    <div class="hint" id="hint">Click to summon</div>
+  </div>
+
+  <script>
+  (() => {
+    const canvas = document.getElementById('stage');
+    const ctx = canvas.getContext('2d');
+    const hint = document.getElementById('hint');
+    const dpr = Math.max(window.devicePixelRatio || 1, 2);
+
+    const W = 520;
+    const H = 380;
+    canvas.width = W * dpr;
+    canvas.height = H * dpr;
+    ctx.scale(dpr, dpr);
+
+    const CX = W / 2;
+    const CY = H / 2;
+
+    const BATARANG_IMG = new Image();
+    BATARANG_IMG.src = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALoAAABGCAYAAAB7Xo6TAAAgAElEQVR4AcTBe6yteX3f9/fn+3vWZa+1z5kLcwFjKGAYYGwHA8HFBoKBXHDBVa3gpGkbRWlimciubVmV3D+cHo+qVo1SqW0ipynUktWqSmwjV63qm0LdmKbIMQYS10wcPFwHwmUYZs5lr8vzPL/vp7+9nz2zzpkZBg4w9usloDAxk2BibmQe90uCd5jHvUfwDoME/1TwUcE9hu8zZ94V3OBHzMSA+MrMgeASk581T2KBzBkLZL6inxVn7qMxE3MuG/4ERMPXKBueQjScy4ZzEVE4EAfm5okDc/PEQdJkQxMNEDw1AQYiM3vORcO5bGiiYSLAAgoTZxMRHeDMrBFRgACSiQDBJcOl5HH3BXy74U7BRwX3mDNvrKCAdwU3+BEacyCemgHxuEvmzCW+Me8UZ95Fk0AAlSfIhj8B0XCdbGii4Vw2NNHwFWTDuYjoAANiIg7MzRMH5uaIAwE1M2s0QAEMCDATMRGTmpmVcxFROBAgwEACAixgBhwDVzKzRsQcKICAChhIwM+BxRrqA7w24EszuGWEF41wb8KlhHcWeERwm+E5hvsD/vUMXtvDcwyfEzzHcJ84ECAOAhBgIIHK4y4xucQ35j7gc4J3CchmjIgCmOtkw5+AaLhONjTRcC4bmmh4agIMKDNrRMwzs48GEBMxERPx1ZkDMxET8fTEE2TmPiJmQABmYkBAAZbANcCAgDkwAM7MISJmTMyBAAMCkkbAjEkABsZsaCKiAAHUbGjuiVg8wKWaeWmMIBLMqcQ8JlCAMkmaiPeUzHdUAgXfu4TfGTNz4Fw0QHCQp3iiQHyDAgX8pQIPFvidGbADClCBCjgbblI02fBNEA1PJibmCbKhiYYDZWblXER0TAQYSA7ERDw9MzE3EhPx9EyTmZVzEVGAyMyBJppsIqLLzDEiOq6TmSNNRKyBXWbWiCiAAGdmpYkGWAIDEAJWmblZrVZ/ppTyZuBh2xvAgIAAKlBtLyV5kaurmd4WxSbtOThIPbqjZinRVZ3sgS4iVpyzvQwvLkixS+2OIuJCbUpjuwABGEgmzsxRkoEETJ2ZMzO+ETPV27AeTXb2fnz/8+k/fgXKt8HwfZCXMpObFE02PIVosuEriIiSmTUaIIDkycTEnMuG60TDRBwsjo6Obpf0Zkl3ACNgIDkQE/HVmYk5EBPxNcjMXtJO0h5wZu4kVc6pLve15i5KHIFle0lT5uPc9tz2TNIamGfmJiKWmbmjiYi17U7Sutb6T3a73e8ASwGLzNxfvHjxTts/Iel1ti8CBh62/ZCkPdDR2J51zBfYG9BoPAck6EdyLjQSdQBGoAILYAQqWVZAWuMiIortq0AHiElIWtre8VSyMCl8PQxBM5NnhjDDdzj9vxztNn/v+bCn+QA5kpibFE02XCciOiCByMyRJiIKTWZWzkVEAcykABUQYCYCzBNkw7loaLKJiI6D+Wq1er2kfw9YAmF7RhMRhYmYiK+NAXMgJuKrMyAOzERA0mRVDcWMJp2DpKXtvSIvAg/b7gBHxNz2Dvi3AAN3AxeBT9r+ddv/UtLvXbt27XMCZkAFtFwuv7WU8hLbb5P0VuBZwGXgCmBgC3zJ9omkCuxsbyXNAQEdMAAL21cBNfMq9SEFWeagUfQBCEhJ1XYBFkACFUhAHIhT7pgUc2AmgT0HAmkLBPacMxqZGOGOdDpfa9UXCz5cBv/Ynxs2f3Av+BLpIJQNX0U0XCcbmoiYZeYQEWtgAAxkUyPiVuAqYCCAAESTmfuIWAAJJGC+RtlEk01EFGAF7IF181dtv0DSYPt5kvZAsR00YSVgwEzMxIJq6MAzUE/joADiqRmQ7WhmNJk5ApaUgJUuQEia295JWoJG21se5xloAASeAQaN4JlDtwK3AncAdwGLWutRKeVf2f414J9IGjJzI2nYbDYfFlCAyMwhItaLxeLOruvWtl8YEW/NzDdIepGkE9uVyWXgMnAFuApcA7ZAkdTbPgb2gIFIaQkId3sggoFGgIAKpO0jSRVIwICBBAyIU1nMKXVmkoKa6QoYEE00NMYFECDAgIEo1HuBlyfjLcBGo/+jeb/57TfDhuaXOeNseBrRcCDANNlExPro6Ogt2+32fZn5aETMgZqZlSeIiFuPj4//bK31/dvt9tHM3ETD1yAbnkJEFGC+XC7vKqX8mO1O0hXgW4AZYCZSYsDgJWjknMQaNNhZuU4KRQPIdgECEAcCBMyYjIABAxlGNDYzib3NAlBzAg7QaGcirYV24AJ0hjuB51k8B+hOTk6Yz+fMZrNPAP8oM/95RGyAtH05Ij597dq1y8AooNBkZo0GCGAOdOv1+gWS7snM10v67jAvpklxBUhAQABzYAASGCRV2wEUICzNgQEXmkGMBZgDFeiBOVCAvaTB9gIwUIEE9kDiSM6UZJJACvW2e9CIGIFRaLTdA5a0sLlKI3FBjK8XWiTjmkbmv51v8+duY/swzS2Qb4d6KTMJxBMlpomGA3EwBxbr9fq/A37h5OTk/YCACuSpaLKJBrhlvV6/G/gHJycnvwPssqGJhqeRDU8QEQUwsGpeB3w/MNJIul3mXswcsQNm2HMpAhBnLCAMIUggQTaeA53FXNLMtgABAQQHAgTMmIxAAgaqjJh0wExwQmMIGqHReC7UA/fbOSLdAzzH9uxku+F4te4tPmj714EP2H40Io5tP7zZbP4IqEAPOBtlJtEwERMxWRwfH6/6vn/WbDZ7diRvMbzNwd3AFuhtD5LWwLOBBAagSkrbI40lAcZlCe5CubMdQDApgAADCRgQB+aUizkTphGkcQUS1AO9oKZdhUZED1RAoIc542cVfA9gM8rQAX+ozfDXVvSfvQDjLZBvh3opMwnEEyWmiYYDcaD1ev1S4B8C/3et9d2bzeZBmohYZOY+Ikpm1oi4fbVavTAi/m5m/vpms3k3cDUzK000fAXZ8BQiYgZ0QFmv1z9s+7mSDPTAS2XeBFwEqqR5Zqrve2azGaUUbNP3PYvFAtsDIKDr+x5JlFmHJJ6KJGxjm2EYONV1HZI4JQnSRISbsdY6K6WMkkqtVeM4MowD69X6quD3ba4g3tT3/XI2m3FK6EPY/5uL3l9rHSNiafvRUsonrl27tgF2TJwNjYDIJiIKBwaUmZUmIlbAsrkQEd8p6c8Abwc64Cog2yUi7rZ9EXhEUme7B2wpAEHpbNegJuckdYC4jm3xZMKFSZhGYOMRSNAOGASZdhWqiBEYQAP2FmmHvZTyVYZA1Ux64D+9evXqP46IWZLjfYRoLmUmgbheYppoOBAHXi6Xry2l/OeSrgzD8J/t9/vPAGIyAAugB3R8fPyDmfkzEfG+Wut/vd1uv5CZI000PEE20WTDU4iIWWYOy+XypbPZ7G+SBVDfoZLkX7DqtwOzMCMwpii11llmMp/PrfRQa51LQhIOcUoSpyy+LjLYHsIIGAFLWtoeJM1t04wpPi/4PcNdwGs2m80sMcer9UdJ/5qS94a03auOpZSHT05OPg88ykSAAWdDE42AyCYaJmLibCKiMHE2x8fHz6m1HpVSXi/prwAvBq4CbrqIuNv2EbAHtpIWCZUzpaMJqmlsD0BIKkxkW0wEiAPhAGQIGgMWpPEI6oEBqIJMuwqNiD2oCgabDac0fidglCtgBxwBv1Zr/ZndbvfID8GWc7+YWTkViHNBiBsJEAdarVZ/XtKPAC8DfvTk5OSfASUzr0XEiiYzNxFx63q9/hvA37T9oVrrpf1+//FsaKLhOtnQRAMIMBMB4kCr1eo/BP6UPLsGlE56VuK3oPpiGqX3QHGoy0wiAtvbgo4yE0k7QCnEgQh1gLhJMm5qQcV2BQzMJJkmM9V8yuJDNi80/q5xHCmlENL/JesXZD8ESMnnx7n+zdWrV79IEw0gJqbJhiYaZSaPiYbrZBMRHaDMHCJikZn7iH9nAf+mW3afflWZ5V8HvwLpCNUrQALPBy4CFbhqSUDgSEMJ6ihpbnsAQlIHGJBtMREgDoSDSTGTFNh4BEZQD4xACtJmQPTACBqxt0g7qM8BfyuPC4N6avzI1e2X3vumiI5z3wfJde4H/TK/BLzD8B7xuI+IM58T/PZyvfzi21B9K/IP4PKzJ9tv+/nkA1sS00REycy6Wq2+p5Tydkl/w/aHbP/tzWbzMWCTmX00gAABeYomGiAAAQIKEMAAjOv1+g7gR4E5WTqDOum1xq80dUUTBklUzClJPMY2ktxUSYUDWXxdZM6EOWUa2yPnBH9E8nu18IZhGF64H3qOV+trmPeo5q9I2mfNXTfyqcLuyw/DmJlbmmgAAeZcNjTRKDO5XjRMlJk1IhbAmJk1IhbADH5pCx8RzZL/8bmx3PwVhf8iytuAR4A9cBfwbOCKJRrhwKCgjkABUtLM9kzSAMi2mAgQICaBgyah0BgwYEEaD6AeGIEqSJsBMQI9aLQ9CO1QHcGvBAZAUCy4YOevnmxv+6k38qlrd4G/CPo+yEuk7yP0TyHuAv8yl5RcqsF7Aj4i+HZz5iOC+wN+qK6XP/yTCl5o8q02nyDjHwGdQotk30fEAkjgLtu3SPprwEcz88e32+0fAidABQQIEJBNpYmIAggIQEAABdjRrFar/0DSS4EgS7GZd6E/b/wiUxc0Yc6keBJJNG6qpALINmdCfD1kTjnMKdkeAWfmrER8lPQHkF62HftXZybL5fIzMj8fyfsMUZLPx3DyqTfD5l7wfRCZOdJEwxNkwzllJl9NNEzEJABn5hgRa2C5Wq3eJtV3MjFndJftF0t6ALyALoDEQVOABAJIIIQ6gwABAouD4CA5IwMWpPEOMDCAEqi2B4kBNAA9jh3SFqqbY6J7BfBlYA4UYEh3795tvvB3M8mId87gEWX+Yh9BwHsE7w3YF/iFgXQl7pvDt5gz9xh+pcDvz5arf/mfFPw8O18i1ANfYFILIYnjiiPtT0u6APlXhT429vGju/GW34e/cAL/sMJf7uDehH98BP/FBj4iuM+AgQCOgB6oQAJxNL/1+xX5Fkk729dmimPLLzd+E7CwmNPInLF4jGlECjDnEldJBRDfOJMeJXW2ByAED9j8LuIe4GX9ONw6n88/Umv9+5I+JWm0/QebzeZhYA1c4Vw2nIsmG56CMpOvJhomYiLAwBrYAAuaoyPeUsryJwHZDqCAbge+VWIDHbYrDgNmYiYFNAPERGAxCW6UnJEBC9J4BCowAAkaBNX2gLQHRhwbYIQahkeI7jVMDFTANEr/3Lhd/NqWz30yuOcCZ/6rE3iH4Z0F/mAJ/+U2841jxE8s4HZz5oMdvHqE//NoufrYj3f4Lhrbtxh3NEL7ggqQIzkX2iK/QtKrbH/WY/lbm/6O98Erd3Bvwm/OMt+/5VSgAEEEkEwEHGXmtePj4+fY/tPy7M0RmtnegLKTbjV+Q816b0TsLRY0MmcsbiCS69jilPjGuKmAZZDUjeOoUspnMb8pcZvhFYILKe4H/gfb12w/FBGfPDk5eSQzB5posokmG85Fkw1PQZnJ1yoaJuI6mVkjomRS12t+oJTlT9HYnoOvQrwGSCg9sMMxAwyISQh1hgAECCwgmAgQB8kkOaMqsPEAjEAFjcBoe5TYg/Y4NkClMXrE4m6JFxkeAQqQQjvjJda/spb/x268/QPsX/4w+YuXCRVw8rjfmMMXBHcb3pqAMxmXF7/j3uKH/v3IugAksTLMoFYgIosApUY1F43fAp4LbWz9nZPts/8n+FN7eLAk798FrzmCn97DRwSXEoJT2UTEYrVa3W77eyLi1cAdZLkCGm0vJYaQ3gh+KbACZNHxdJQ8AwzI9gB4t9vNl8vlZeC9ktL2twF3AvdL+nnbDwFfPjk5+XRmPhpNNnydlJl8raJhIm50BGyBOTAcHfH2iMVPAp3tnaQZ6LugJPBFHEtAHEhoZghAgMACAhAgbmRuoBFIQRrvgAokaBRU4x1oJ0pvewcIVB3RI9+K/QKkT2GvbC4jzGOsh1F8xu4+YrrPOy4+2F/79s9m/uJlmoj7VvBDI9xrUHL0uruX+vifg+FVxd4CRtwquA2qjJfKIkFm1AC/AjgGVfAR6LfGzdFPbPNznyQQj0kc8ZoVfHGxWHzx9q7rnmf7ecCzJd0JPAsYgStkV4EBvES8JNAbMuvttum6jsQ8LSVfgZmIm+OmSupo+r5nNptdBd4HPGz7uyTdBnze9s8BXwAe2mw2H83MqxGxyMw93wBlJjcrGiZiIg4ik/74OP5jafbDwFzSZdsXoHsBpxxboAdmQAAh1BmCMw4mBRAgnswcGDQKqvEOqECCKjCCt6C9KL3tHaekvSP2To/IdwieB1xG2toehLacUQIVYewF0jaTL0A8WLn4W8NYNrOZZs7+qGi8NdS/BI8vQhoiXcEd8muxL0h52fiCsgjoHXk7+G7gMjAI7Yw3EB+kll+p1ddEjKGyN1mI4U8reL41XJB0CzAAIyDATS/pGrCwreLZd0i80rXelZmM48jR0REVc8riqSn5CsxE3CTbPTCnkeTmN20/LOm7JV20/bDt/17SJ2w/LOkzJycnjwAJmHPZ8HVQZnKzouFGYmKgAyqwXK26H5fKXwR2wBF0K+AFuJyAT5iE0AyQITjjAAIQIECAmIiJmQhIIEEjeAckMAIJGrC3iBG6PfYJaEQMVhgx2lwRvgv8LQaBHhLskHqMEG52kuZOJ+JWiSMnn0Gq2DOkE6GKqE52hkeLvQA/G/kl4CXUAEJZjBhQXjS+AAyYy4AMXxYMSFvbO6EeEJA2j0Robo0zoEpKwE1nuwcqUCQdAfeGy3cB6zAj0PV9z2KxyIqDxuKpKflms91Lmtm+AvwLSV+w/bpa63NLKZ+y/W5J769NKeUPT05OHgEMJE+QDTdJmcnXIxoOxMRAByQQx8fcYs9+DOIHONMZMC4vEIzGeyCAEOoMAQgsIIAABAgQTxZAAXrAQBXaG49AAiNosL2TGKDsbbaCAWmPPZPixPbG0AkG4E4HdyBtMFdBI2K02WIXheaYDhygEfRFGuOFULV9DSlB+3C9E3wXcAdYkAFIGUjUpK4QF4DbhT5n+JLtQWiP2GMeBTrjmdA1SX2me5V6AXjUtiJiqeoT4+LQncBtwL3A3R457roubVdJs/1+z3w+Hy06no6SbxbbSML2yOT/Az4A/GXgFmAH/De2/7nth0opH7927dqjgJmYiTmXDTdJmcnXIxoOxIGABDpgBG47Pp7/rK3vge4hSVey6mUhPdu4pxGaATIEILCAAAIIQEBwowQKEMAAGKhCexrjARhBe8Fgu0dlL7RLexT0NEaPhNTZ3gFV0rZKS8FtyLdhwrCTmNtsBQMTG10BemAucWRz2WYTobC9iKzPRToGz4GEpLEcgQkitwYBd4IvYr6I9KDtjVAPJNIguMX2iaRN2vsouczMUdLc9i1h3QHc5eC5wAK4KMnhou12y9HRUQJhm1MWT0/JN4ttJGGbZpD0z2x/DHgl8G2S/lfb/3tmXs3Mz+/3+y8BO8DcyJzLhpukzOTrEQ1PJiYGOiBpjo+Pb7P9U8BLgMu43AF+E/AoIKEZIEOAAwhAgIACBBMxKUAFBqADBBgYQT1gcA8MoD0wYveo7EE726OgB6XxFVAKRqCCEjAiseeSVsZzzBxxbOdtklaYB6T4WKYHhZZA2FyVWIPvxl4iLgIBBNABI2in9BJYACNQHFRAgoWhiPyC4SrQM5ljvoS0wz4i6l3AXcDtwBxYAEdABwSwBxaSZrZroAKIcxZ/LGxzShKZiaSHgf8X+BJwO/BR278laW/7X282my8A4qmZc9lwk5SZfKOi4UZiIprMHFer1RtKKT8MrHBB8HpAxj1owSTABRAgoADBRICYLIAB2DFZAAYGYARVwWi8BwZQb3uQyh60t72XtAESsNDe9g6ogAAZZiHNjGdA8Bh7hnQRLNDnsY+Rekwgqu2VxAowIMBAADNMkXSZ9FLSFpgZF4tOcERjWEAN0N72KDGA1sCjgp3xBYUXti8CBVgAHTADCiBAgJoZYBlxHYs/NraRRGYi6Y9s/66kASjA79Za/4Xtz+73+wczc4yIOZCAuZE5lw03SZnJN0s0TMREHFw8Pj6+z/a3kuUy8uuAO4AT0BwQOIACBCCgAGISgJgI6IAR2AMdIKACI5CgHrwHBtAg6E3sgZ3NVlCRdtgLpC3mClBBCQ7DQmJpswMksYykGMLyDHGrkkeAmaQO6IAKpAWGAAQuQIAGUkc0Ug4Ci06YMAR4ZiqNLCwxh3TaGVIAMgQgVAPogALMgNsAAQIEqOkA0dhGEt8EZiK+BrZ5jCRs/wbwSWAFjJJ+IzMf2Gw2H83Mk2iAAAQYMAfmXDbcJGUm3yzRcCBupPV6/beAP0uWLyNeAn650GgQIHAHBBCAgAAECBA3Ckmd7R4wICCBCiSoB++BARhAPY49Yie0s90j7YEqNNhcRhgTnPHMeC40SlraeUGmUW95YSgFzW33NJLmQABpUQ3BpIDDZivKEvtIZAUy6HiMoZiRRg5OjSLXxjtMIF0Q7AFZ9SIwAnMmt0ha265AlTTv+14RQSkF20hCEs8QcyNxHds9sLX9q5KuAUvbf2T7vbY/u9vtvggM2dBExAxIJuYJsuEmKTP5ZouGiTiXmXW9Xn93RPw0LiHUG7+JgwB3QAACBBRATMS5QDRz20RE2q6AgEqTeAT2wA6owB404NgjdpAJjDhOkDa2e6Ee1HPGBZhJmqddQyrGc+y1oYRUbE6Ml4AFibQEF87I3MAh1BsCvIrskoNgIjPSCDCnggWNqVvQsaAa34YygUHSse0O6IACdJLmtqukzvYoqeOZY56eOGf7Q8AHgIXtGfDezPx4RHx0s9k8zKQDBkCAAQPmCbLhJikz+WaLhhsJCGCxXq//Ni4vxlyTeJXx80EDWEABAhBQAAECBIhzgVxrnUuilJJMwvYAOHEFBtAe3AM7UBXRG7YiT9KuUtcBjwrt0plCe9AA7iStARkHBzPsBY2hCHqki7b3IRVDgAsHAgKoQAek4IKy2wDBRJxxmGomBpRyJ5SmRkiFxniJUkx64BhYMCnACghgACowl7S0fSJpxYH4xpnGdpVUaGxXSYWJmLh5H3A/sLb9kO3/JyIeODk5eTAzr3AuGr6KbLhJykyeSdEAAlaZefXixYvvIMtfsn0N/FzE9wbRgwsgIBLTdICYCFBRFBrbKSlsD5IWQNLYTsBAAgOoF4zGG1Am2gPXIHvbW0EibUW3o7Hdg3bgmaQVIOMCFCCBwJ7hYsQxTyagAAIs1BsvMaIxXJNYh1WYBDiYiAMDSlXOSaIDZJijIYAOCElz2wtgBsyAkEFSsV2BBOZADyQQhGaAmJgDMTETMTETcSPT2K6SCo3tSiOpAKKxfRV4n+1HgQA+LOmDtu/fbDaPAEM2PEE0PIVsuEnKTJ5J0QACloDn8/nzZ2X500i9nWuJtwVhcAABOHEAHRAcRFEEEEDarkAPLCQF52xXIIER1AtG4y1NEjvgMuQWe2cISRvRbWls74ERCElHgIw7zAIxAIE9w90eCPBC0sJYTAQU7AVSb7ORWGGCMy6gWpAMAgIcgAAB5jqpymMkZoYAAg0dMAcECAhgAcyBpYyYJBCAmxmNpC8Tup0DcyAmZiIa26OkAogbmcZ25cCAmgKIxvbHgAeAUdJJZv56Zj6w2+0+DAxABZwN14mGp5ANN0mZyTMpGibljeAPwS11tfoZSRdLzhL5363kAjSCO8Aol0AAwVMIVAABboZQ19lOUw3YIoEKVGAA9oAtbYAvd/VoB2QlF1gPWeOGRmgEBqBIWqYzJS2YBFkKeI6qDCEYJS0NAgQEWEAHJGgAF6DjRmYiIMgQk+BUpDFioowMSQUTQBGjgCUgmjBHhjlQgLmkznaV1AFu+sxcbHdb1qv1ntDCNpJo3FQaSQWQ7ZHryJyR1NmGENdxU7mOpMJENLY/DTwILCV9XH3+z+rr/a9k/+lroA9CAsrMkWeIMpNnUjRM9GqIY/AHVqufBl7eeb6z/KYk7wQEjMAaZQWKpM525cA0MmqK7QqkKEFjKqcsEkigB0ZJo21ZugY81NWjPTCOriniRJG7dFahEbQHd5JWtveIFdABI1nmxkeKnNHYHkMqho7HOYAAzEEwMRNxYFwSSEzHqagdIE4ZZWQAajpMiFHACgjAYZaGBTADOkmdbdVaKaWMQEqan5ycsF6vscA2krA9ck5SAWR75Doypyypsy1CXMc0tisTA2oKIBrbHwcuA8eSPsxu/LnZyCdexO7zNB+EpMnMyjNEmckzKRomeiPoIYhPrdfvBL6z1Nk1wt9v/ELQCbgAy1RVM7NNM9JIKrZHGhk1xfbIREwMiFCx3QMDjaSN7cHSznC51G4vtEtxTWgLKO1BMIJ6cCdplc4qaQkUYCRjAYQijwDTGAq4cEYGBxCAmQQ3MiAOTBauI3BwKlKAUlmYWNJMHgO4AAjIMEeGGTADOkCAAHFOUmebMyFsIwnbI2AmaortKqnQ2K6BChPZhhCNaWxXScV2ZWImajoa238IHAG3A7/S9f57HjaffCVcofltME1mVp4hykyeSdFw7odANL+6Wv11Sd9dspsjXm18D7ADVsDoyEXf9+q6DkmDpM62GjdjoK7WqlIKtkdJhcb2AKg6ZxGxB0bAwBa45oi97W0Zu17S1sKGL2OWwJeQ9tgdIMMcHJKOgACSjCUgRc45ZzznQIAA8WTiRsFjsiRnHFwvMmhSGZyTNCOHlHQLEIDDrAxLoDAREExCUgHExBanRGN7BBIQIM5JKpyTOSUa2xByU5kYEGAOTCNpTmP7fknPAu6y/fNd73/QDZsHvgO2NL8NBkyTDc8AZSZ/HKIBRHN8fPyDtv9tSUvbr5L5XuCaKEtgTFVLOiLdAwLUFBxqIMfe9pwmIsDBqRSDpDKM+yil9CYGwEIb4z3oBHuDNAi2plylEdrY3iL1QshFzOEAABPXSURBVL2dFwAZzyQtgACSjDXiyNSBJqQwngNiIp5MHIiD4DFZKjcSOIgUJjJSgAEJHeNhK2kFzADJrIEFUJgICECAAdFI6mzvCS1tIwnbI2AmaortKqlwTka2eVyIxk0FDIgDAwYMJJDAZWCx3++ftVgs3lVOxr/zEvYPvgiS5pfBNNnwDFFm8schGkCAjo+Pf9D2m2zvJH2/zMuAXpQAnKpqOtInwAIw4FA3H8eRWRGnbI+2O6fouo6KkYSp2O5NJDACV4A9aMA+QToRjOmokq4IDemsIq4hjL0AQtIckHEHFDIWNIpcpF0BSRwB4isTB+IgeEyWijDXM0HUAiiV4qAUZbG9ADqgC2thvAQCmAMGgkbSzDa2iYj/vz14jdH0vs86/r1+9/0cZp7xru31rlvHOW0Su924RWkIlJDKNkIcCgipuFpReMWhpFSRwouqQlCmIyFegUgqIdGId7yIlnXFISWUKvggRSmNiYqRvW7Owel649n12rtzeE73/3fxn31mvWN37XjxrAn1fD6uVJzskEREYHvOgliwpJZdMjvEgi1ewXaR1PAabL8ArGTmMCJ+Q1vzf3wvs28eh6Q6DabKiptEmcnNFBXXCBguLy9/EjgCNJJ+BjgENEDDggDJBAsGDJiFATATjVgwoKpnGwtTJXQsbIPmxnPBRI5zNtuCDmnLZioowJyFnqS+cQ97xdAIOrtpQmqtrgcyV7gFDIgF80piQbyWbIwwYK4RKqKyLKABZKygCBgAQ6AvE8AA6AM9oGFBVVNKUUTMgJhOp23b7yGJiKByVVgwYEBAsmCZV7AIQICqxnahktSwIMBUtgvQAXNJK7b/R7PV/fUR03P3wOwByNXMZFdUWbHPlJncTFFxjYDl0Wj0K8A28MeAP81CH+iAAdABPZkeC+KVLLgMzQSQ0NC4BQaAEg+AmaUEEkjQHEhwK2sDNAeet9mSdBlzCTAgIAAhRthLSB12K9qhcYNKAzQsiD8sgeC1GRALJhsQBsyC2aEiKssBCGiMm6Bgu5E0AoYyM2Ag6BsGwC2SyEym0ynD4bCT1NieAHOLZCEAAUNAgIEEAjCQgGV2JGCgtQhAgABzfaoaKtszYAwMJV1uCr/YH2/+1lGY/Sx0q5nJrqiyYp8pM7lZouIaAR4Ohz/ZNM1fBe4D/gwQgKqe7QkQUEJSY8ccGAMt0GdBwAR4HuhJGtjeAAwIkKU+MAM6oAVuRTKOxPQQc3Y4WuNpmD5wHnQBuGh7C5TgkLRERg8IoDFuJLVAi4qABggggQCSN8YsmGuSK2RewQICaDENFAytIpeAJcBAyIyAJUAsJDARjUAJboBIlQZoMrNP1TQNttkhCRkDso1tdthmR9M0zkxxHZKQxGtwNQdS5tP3jLd+ZQx6ipyTmGotIqjWWMiKfaLM5GaJChBgFjQajT4J/P2tra3j/X6f2WzGjl6vRykFSQyHPebzOXZwlSR6vd5Y0pLtC8AWcDsLF4EOENB3xCZ2A7SAgLsB46AqQAKGSNBczh5oDiQQwEXQc8AFdmQMgAYIxADoY0QUAcGCuKbwSsFC8koGzIIBc4XMQrIQ4AYIrigtJogcAkNJI9tDGQEz4BYggRYoomE2mw2apiEicCS2uUoSknhZmszENl3XERHM53MiAknYxja2eTVJvJptJCEJSQz6g9/uj/Nvv5fx889D+2zmmGotIqhWM5N9pszkZokKEGAWlkaj0V+S9NdsT4AOSNvbkmbAIaAUaSqYhz0FhpKGttuMeAG7L2nZ9hQ4ChwBGqDNYCR0yPaUKuWh4A4lR23TRC+BmE+m9Ho9pGYbaGWbBbNQgD7oJdvngt4LtmeIEaZFJCaI0gLiGvNKZiGAZCG5JgGzYF6mwoJ5mftAAA0ujaS+VYbAEFiSNFci4yVgIKk/nU7p9/tz0cw3ti8vL/WXKaXgSPZqmoamaebAFtDJBLAt2DRcBARcwLyI/ZIigutyAwgQJgwt0EgagHuGFhDp34nO/+3ubvw/nyLn9xG9D0I5AaZazUz2mTKTmy0qQEALeDQa/YjtuwBl5kbTND1Amblpe+jBIEop2XadAQGm8mDQAqIqmRPA2NFE3GK7Nws3VeuSK+B+ugjpUF/tMpnHlc29glvD/iFgCFFsLzcStieAAAMF6FgY4GYDewr6HmgduB3coGwBI8xVRohkQVxjwECykIBZMC9TAUwlMGAqQw/cYvqoHAb6KJeAHtAAw242byskYZvxeMxoNMIpJNF1HW3bTlPleeAs8A3bFyVdtr0JvASMe45JKWUW0hQwVZYcR9P0qQQFcCkl2aNpmiilJGAWLEgqQzRN0wJh3HfJy8vd5MkfgekmaAV8DHwCvJqZ7DNlJm+FiGiAAAQMgP7y8nLPdgBB1TTNlMq22LW1tVWAXKrGbTtiMNiklG0OHZoymTSMx32Gwz5d18MWmQ3DGLEjy5TMttc1Q2cuRxnc2oSWnWUk5YlI3YF8L3AXcBt4BTDQAXNQB1iOYnwrEEIXbX0LkaZbEUrAgAAD5iphrjFgIFlIFpKXqXCFG5AFHWDjAWgOPgocFZnGU5S3l1JWJBERZFfITPbq9/rr0HwH880gvkPyndKbXyylzCVNJM1KBVjSHMh+p05QQBbkfD7vGjRtiamQp2zPBAbMNTKIXSNWwlgFN4kDkLGo+jTTjq3xEnTvg/kDkOyxmpnsM2Umb4WIaFgwIECAWHBmdhHRAgLENSUzS0Q0vPvdPSaThh3DYaHXM682n4vDk4ZpF1y1nkEpweW7gqUy7DfTw3Y2vVn0FeWwotxuz99N+APgD4LvAy8BAm3jmGPPkYbgZaADPW/KlqRtTN+4pRJKwIAR5hoDBpKFBMwVShYSsMCA086QwngFfBdgQJBHbfejwZubm+r3+5RSaBQMBgNsf03o91zyEewLPUaTUDMBspSS097WRNKs67qxpGnTNFPA29vbcyBvh0LVQLaQIyiHIdk1Bi2BqS5BTCDmEFQ9yCFkH0w1A00g5hDs6iCo3gOTFfCjZFkjxK7VzGSfKTN5K0SVFVVULAgQYMCAAAEGBAhIFsT99/MKm5tix/HjyalTycmTwZe/3OOOWfDLH5vy0Klkx8mTwalThUCw1oPfbGF98H6OtFRTxr1xb+PO4vmSGo3GTI5H8GGJjxq/AxrAktUJSoo+uAEVYN32RKgYN1RChQWzQxgwYCBZSBZshQEBBjoyOypJA+wV5COgOfiopFvsMgeMsj+bzdjR7/e/G+a/yDyFWce+lCU3m6bpR1meDGLppTLL2YBDFy8uf2ewvb09BSbAHEiqzCzssRYRVL8JDdUK+BiYXSfAj0Fsgi5BHIZcAR8DU50AU50BsesUmWuEzoDYdQLMHquZyT5TZvJWiYpdWUVEAwgw15g9sqKKiJYPf1hcNR6LpSWz18qK2fEAC2fOB+tbwflRsuPMv0q4vwCCk+39LMcSh/wu7kuqr/Kl5ixP3vJdzh5qer412jxuyo+j+CnhH8VeBnUWHXgq1BovAS/ZvBRSUNnMASPMNQYMJAvJLisSEAtd2MV4YHtFUmu7k7hnOp0OB4MBmR3z+ZzhUh/bXwIeAX6/6Xge3LCj+EW6vNgSk6N86NIKt5df5nPTL/CZ+Ax/LwADHSDAgDKzUK1FBNUZ0DroGHgddAx8AnwGxK51EHscA58As8cZENUpMtcI8X2sZib7TJnJWy2qrKLimgCSXVlFRZUVVUQ0VJlZqKJiQVzjrKLKKiKazCzsFWiN0Cpprni84Yr7C9V9PDja4IVej0Fucf72bjB9T6fZRxL+JPJPGfcxGxGMDY1gBQjDdwRdsYaIAQvbgAGzy7QGDBRQJ7oAC1JAZ0ng94DOAYftvNc22XXM5hOWV1bmhkca+E+2vwYUoC2lTCR9ezy+/3zm56cRH+/Bn0043XDFiaT6ee7SizynDS7qb/Fr3UM4H0ZB9RBOdq0RojoDWgc9ALlKOogAdD9wDLwOOgY+AeZVVklTnSTiBHiV9BqhVdK8lsTsM2Um/69ExXVkRRUVVVZUUVFlRRUVCwLMq2QVVVbsFYg/TA8jPc1jovogD/gLfCY+z6dvMbPlKeOlKT5Kf/bHHd1PS/wEyqnQBtAaD4A7QU8mEjtMi0jALJjKtAYMJKgTnYGAQpUWx0HPAYe3tzbvjaah1+vRaxqc/q2u8X8wfK/NnAABfC8i/uDy5cvnqSI+ugTvLHCq44qHxRUPmWqVx4Ndq9xfqB5GQfUQTnatEeJVVkkHIapVFs6AToC5jlXSVGuEqFZJrxFaJc1rScw+U2by/7uosuI6osqKHYF4HWuEqB6D2AStgB+A/AwM74HZYT669DTP3nmxnR3N/vxvmnzQeCS0DRTDEHxHEueAS0DDKxlI05oFA0ZlYPOSlC3iDigT4PZSynvbtmU8HjMcDjdk/5rtL5ZebwLI4/HZ2Wx2DuiAAGaA4WcDTnUJZq/E7AjEGxCEsuL7iCorrgrE61gjtEqa15KYfabM5G0jEK9BnAxzKqkeJJpN0AqYahP0PLS/xCfyE3x6/qN8bDTm4srl4fqfK1E+AT4qNAbSeJjoiNB3DRMggQSChTRtAQQkOyLntg+LHADbqNzZdd0727Zle3ub5eXlbzjiU1HK04C2Ip5DOs/lyy9RZRURbWZ2UWXF6wnEVYkJxF6JuY6o2CMrricQb0Zi9pkyk7eNQLwBJ4n4FsRfhrJK+kGiOQY+xaN6mMfiNAv/nd8YbfTPfSzb7peAY0ACWeAwcBtoHXQWPGChAMWKAAuUwNx0h4VGwDngRHp+x3w+RxK9fv+3aZp/UzI3077cDYff4sKFFwABCRgw4Kx4owKxV2J2BCIxgXgtiXk9gXgzErPPlJm8bQTiVcTJYNevctrsOgM6AaY6AzoB/lUsqtPAF/hMvMhz+h1Or2y3L3yg60/+oeHHwMN0rCMOAbcAm8BFwICBtGIK7ttsII6KXDF8U/jEbDZ7Z8k5/X6fpmk+56b5twkXir3Vte1zXLhwlog+kEBhQVSZWXgjAvFGJWZHIK5KzOsJxJuRmH2mzORtJxDfxxqhVdJcx8MonuYxneGxeJrH+h/j56b/sfdP7xm3G/8A+U8lSsNYsGR8G2gLs4XogGJZLDTAbYZnwHfNptOfKKWwPBp2hs8W6bOKmCZcmrft17jzzik7zpxJFkyVmYUbEYjrScyOQLyOIJQVe0RFlRWBeDMSs8+UmbztBOJNWuPx5hxf07M8Fd/mK/1n8osbPxTvPj5Z2vh4ip82TIQ2bB9C3Ap0mE1ADs+ABO4EzgEXwA+WUg41TbNBw7/o7CckZTbNH8yPH/8qTzwx5777+hw9mjz+eLJHVtyIQFxPYnYEYo+HUTyEk11BKCv2iIoqKwLxZiRmnykzedsJxP+lNUJrXCEWAihAA8RoNDpMtr+I/BBwGZhi34J4Xyp+V7BE5lTivRm+LOmb2D8G3AXMEz6V0u+lfamLOMto9D3Ont0GxEc+0rLjK18pgACzR1YcuC5lJm87gXgzEkfFggADAgLQMu86ouVLqzj/hOEFSX3wcUsd6LtyLoNGbvyM7UOCe4HDlv5dsT+niPEUvskHPvAsx48nO9bXxVWPP24WzB5ZceC6lJn8oIsqq6iy4gdMVFyjzCxL8cPvbZfHn8K+G2kDaC3dAzwrutuA30/pJeCEpHcAX0rps5YuTO1vc9ttz+W3vz0JXiZOngx2nD7NLrNHVhy4LmUmB96cqNiVVQQBD2s0+IX7aeb/DDBwPsW7BEdEmQGPOOL92CvALKVfd8TZhBfm73//0/nEE/M4cuRwvvDCpXjwwZZjx8xVp0+zy+yRFQeuS5nJgRsTIPaKEAsCAv5CwOfn8PFmeXjqkyj/vNAUMQIfz/AXgangiGHZ0ucTnnHE+rzf/yqHD8/50Ic6dpw6VTh5smGv06fZw7yOrCIQVSbmbUqZyYEbEyD2ihALAgQ/L3g2Mj8/jbj7yGhp818a/7CgIG7P8DOAJY1sbxX492qajelw+BR33/0iKyvORx/t4iMf6bGyYh59tAPEgw827Hj88eSGpKkyMW9TykwO3JgAsVeEWAggIDv4eAP/umSSo+FtP6Mmf0Foxo4oz9vuS+okfdn2122vb25uPkkVJ0827HXqVHLyZLC+Lo4dM6dPmxuSpsrEvE0pMzlwYwLEHglmj4iHm8yHSsRaC/+1B5eb0fLZf27n+4RmRDkPzG1v2n7E9oW2bb+xubn5IpBkOsHsCq4QJ08GO06fNjckTZWJeZtSZvKDLqqsosqKNyCqrNgVVVbso6i4PgECeoCAydLS0l+JiL8LFOASYOB/AU+WUr4+mUzWM3McEYPMnEbFggCzR1YcuCHKTP4oiiordkWVFTdRVFwjoAEaYL60tHRnRPwT4J2SLmfm92w/YvviZDJ5EhgDysw5VVTsyioqdmXFgRuizOSPoqiyYldUWfEWiQoQIECZOV9ZWfk7EfFzSl8k/bthfaVM58/9RWZfXwdtgp7InEfFrqw48KYpMzlw80REC0RmzpaWlt7Ttu2vK30+rP/srvzv5a75xrncWH8won0AcpV0EC2QVeHAvlBmcuDmiApoAFFl5mxlZeUfhblNhUfDPPf++fZTxyGp1kEPQK4BWXFg3ygzOXBzRUQP6APT4XD4jj7NT8qs96d+5gG2z/MqpzILB/aVMpMDN0dULDQsDDNz4/bBLT8uyCPzra//DZivkl4jRLVKmsQc2FfKTA7cXFGxMAQmd8LSGPofgo1HMzsCrRGiWiVNYg7sq/8DhmDttpUCcaUAAAAASUVORK5CYII=";
+
+    const BATARANG_POINTS = [{"x": -91.2, "y": -21.7}, {"x": -89.2, "y": -19.7}, {"x": -77.2, "y": -13.7}, {"x": -67.2, "y": -3.7}, {"x": -64.2, "y": 3.3}, {"x": -64.2, "y": 11.3}, {"x": -65.2, "y": 14.3}, {"x": -63.2, "y": 15.3}, {"x": -36.2, "y": 15.3}, {"x": -35.2, "y": 16.3}, {"x": -30.2, "y": 16.3}, {"x": -26.2, "y": 18.3}, {"x": -23.2, "y": 18.3}, {"x": -12.2, "y": 24.3}, {"x": -6.2, "y": 30.3}, {"x": -0.2, "y": 41.3}, {"x": 0.8, "y": 41.3}, {"x": 1.8, "y": 37.3}, {"x": 4.8, "y": 32.3}, {"x": 12.8, "y": 24.3}, {"x": 21.8, "y": 19.3}, {"x": 27.8, "y": 18.3}, {"x": 31.8, "y": 16.3}, {"x": 36.8, "y": 16.3}, {"x": 37.8, "y": 15.3}, {"x": 63.8, "y": 15.3}, {"x": 62.8, "y": 6.3}, {"x": 65.8, "y": 0.3}, {"x": 65.8, "y": -1.7}, {"x": 73.8, "y": -10.7}, {"x": 80.8, "y": -15.7}, {"x": 89.8, "y": -19.7}, {"x": 88.8, "y": -21.7}, {"x": 28.8, "y": -21.7}, {"x": 25.8, "y": -13.7}, {"x": 21.8, "y": -9.7}, {"x": 12.8, "y": -6.7}, {"x": 9.8, "y": -6.7}, {"x": 6.8, "y": -8.7}, {"x": 6.8, "y": -12.7}, {"x": 4.8, "y": -18.7}, {"x": 4.8, "y": -16.7}, {"x": 1.8, "y": -12.7}, {"x": -3.2, "y": -12.7}, {"x": -6.2, "y": -18.7}, {"x": -7.2, "y": -9.7}, {"x": -11.2, "y": -6.7}, {"x": -14.2, "y": -6.7}, {"x": -23.2, "y": -9.7}, {"x": -26.2, "y": -12.7}, {"x": -30.2, "y": -21.7}];
+
+    const BW = 200;
+    const BH = 60;
+    const BR = 18;
+    const BX = CX - BW / 2;
+    const BY = CY - BH / 2;
+
+    let state = 'idle';
+    let t = 0;
+    let lastTime = 0;
+
+    const NUM_BATS = 36;
+    let bats = [];
+    let shards = [];
+
+    function traceBatarangOutline(scale) {
+      ctx.beginPath();
+      for (let i = 0; i < BATARANG_POINTS.length; i++) {
+        const p = BATARANG_POINTS[i];
+        if (i === 0) ctx.moveTo(p.x * scale, p.y * scale);
+        else ctx.lineTo(p.x * scale, p.y * scale);
+      }
+      ctx.closePath();
+    }
+
+    function createButtonShards() {
+      shards = [];
+      const cols = 6;
+      const rows = 3;
+      const cellW = BW / cols;
+      const cellH = BH / rows;
+
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const originX = BX + (c + 0.5) * cellW + (Math.random() - 0.5) * 6;
+          const originY = BY + (r + 0.5) * cellH + (Math.random() - 0.5) * 4;
+
+          const pts = [];
+          const sides = 5 + Math.floor(Math.random() * 2);
+          const rad = 14 + Math.random() * 8;
+          for (let s = 0; s < sides; s++) {
+            const angle = (s / sides) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
+            pts.push({
+              x: Math.cos(angle) * rad * (0.7 + Math.random() * 0.4),
+              y: Math.sin(angle) * rad * (0.5 + Math.random() * 0.4)
+            });
+          }
+
+          const scatterAngle = Math.atan2(originY - CY, originX - CX) + (Math.random() - 0.5) * 0.4;
+          const speed = 90 + Math.random() * 110;
+
+          shards.push({
+            x: originX,
+            y: originY,
+            startX: originX,
+            startY: originY,
+            targetX: originX + Math.cos(scatterAngle) * speed,
+            targetY: originY + Math.sin(scatterAngle) * speed * 0.7 + 20,
+            pts,
+            rotSpeed: (Math.random() - 0.5) * 6,
+            delay: (1 - (originX - BX) / BW) * 0.35 + Math.random() * 0.1
+          });
+        }
+      }
+    }
+
+    function initBats() {
+      bats = [];
+      const perimeter = 2 * (BW + BH);
+
+      for (let i = 0; i < NUM_BATS; i++) {
+        const distOnEdge = (i / NUM_BATS) * perimeter;
+        let startX, startY;
+
+        if (distOnEdge < BW) {
+          startX = BX + distOnEdge;
+          startY = BY;
+        } else if (distOnEdge < BW + BH) {
+          startX = BX + BW;
+          startY = BY + (distOnEdge - BW);
+        } else if (distOnEdge < 2 * BW + BH) {
+          startX = BX + BW - (distOnEdge - BW - BH);
+          startY = BY + BH;
+        } else {
+          startX = BX;
+          startY = BY + BH - (distOnEdge - 2 * BW - BH);
+        }
+
+        const outAngle = Math.atan2(startY - CY, startX - CX) + (Math.random() - 0.5) * 0.3;
+        const blastDist = 100 + Math.random() * 90;
+
+        const ptIdx = Math.floor((i / NUM_BATS) * BATARANG_POINTS.length);
+        const targetPt = BATARANG_POINTS[ptIdx];
+
+        bats.push({
+          x: startX,
+          y: startY,
+          startX,
+          startY,
+          biteRadius: 7 + Math.random() * 6,
+          peelDelay: (1 - (startX - BX) / BW) * 0.5 + Math.random() * 0.15,
+          burstX: CX + Math.cos(outAngle) * blastDist,
+          burstY: CY + Math.sin(outAngle) * (blastDist * 0.7),
+          orbitAngle: outAngle,
+          orbitRadius: 70 + Math.random() * 35,
+          orbitSpeed: (2.4 + Math.random() * 1.6) * (Math.random() > 0.5 ? 1 : -1),
+          targetX: CX + targetPt.x,
+          targetY: CY + targetPt.y,
+          size: 0.9 + Math.random() * 0.5,
+          rot: outAngle + Math.PI / 2,
+          rotSpeed: (Math.random() - 0.5) * 8,
+          flapPhase: Math.random() * Math.PI * 2,
+          flapSpeed: 12 + Math.random() * 10
+        });
+      }
+
+      createButtonShards();
+    }
+
+    function drawRoundedRectPath(c, x, y, w, h, r) {
+      c.beginPath();
+      c.moveTo(x + r, y);
+      c.lineTo(x + w - r, y);
+      c.quadraticCurveTo(x + w, y, x + w, y + r);
+      c.lineTo(x + w, y + h - r);
+      c.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      c.lineTo(x + r, y + h);
+      c.quadraticCurveTo(x, y + h, x, y + h - r);
+      c.lineTo(x, y + r);
+      c.quadraticCurveTo(x, y, x + r, y);
+      c.closePath();
+    }
+
+    function drawButton(alpha, activeBites = []) {
+      if (alpha <= 0.005) return;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.18)';
+      ctx.shadowBlur = 18;
+      ctx.shadowOffsetY = 10;
+
+      drawRoundedRectPath(ctx, BX - 1.5, BY - 1.5, BW + 3, BH + 3, BR + 1.5);
+      const rimGrad = ctx.createLinearGradient(BX, BY, BX, BY + BH);
+      rimGrad.addColorStop(0, '#52525b');
+      rimGrad.addColorStop(0.5, '#3f3f46');
+      rimGrad.addColorStop(1, '#18181b');
+      ctx.fillStyle = rimGrad;
+      ctx.fill();
+
+      ctx.shadowColor = 'transparent';
+
+      ctx.save();
+      if (activeBites.length > 0) {
+        ctx.beginPath();
+        drawRoundedRectPath(ctx, BX, BY, BW, BH, BR);
+        for (const b of activeBites) {
+          ctx.moveTo(b.x + b.r, b.y);
+          ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2, true);
+        }
+        ctx.clip('evenodd');
+      } else {
+        drawRoundedRectPath(ctx, BX, BY, BW, BH, BR);
+        ctx.clip();
+      }
+
+      const bodyGrad = ctx.createLinearGradient(BX, BY, BX, BY + BH);
+      bodyGrad.addColorStop(0, '#2e2e33');
+      bodyGrad.addColorStop(0.4, '#1f1f23');
+      bodyGrad.addColorStop(1, '#131316');
+      ctx.fillStyle = bodyGrad;
+      ctx.fillRect(BX, BY, BW, BH);
+
+      ctx.globalAlpha = alpha * 0.14;
+      const sp = 4;
+      for (let py = BY; py < BY + BH; py += sp) {
+        const offset = ((py - BY) / sp % 2 === 0) ? 0 : sp / 2;
+        for (let px = BX; px < BX + BW; px += sp) {
+          ctx.beginPath();
+          ctx.arc(px + offset, py, 0.7, 0, Math.PI * 2);
+          ctx.fillStyle = '#a1a1aa';
+          ctx.fill();
+        }
+      }
+
+      ctx.globalAlpha = alpha;
+      ctx.font = '500 15px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#e4e4e7';
+      ctx.fillText("i'm batman", CX, CY + 0.5);
+
+      ctx.restore();
+      ctx.restore();
+    }
+
+    function drawBatVector(x, y, scale, rotation, alpha, flap) {
+      if (alpha <= 0.01) return;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+
+      ctx.save();
+      ctx.translate(x + 3, y + 8);
+      ctx.rotate(rotation);
+      ctx.scale((1 + flap * 0.2) * scale, scale * 0.45);
+      renderBatPath();
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.16)';
+      ctx.fill();
+      ctx.restore();
+
+      ctx.translate(x, y);
+      ctx.rotate(rotation);
+      ctx.scale((1 + flap * 0.2) * scale, scale);
+      renderBatPath();
+      ctx.fillStyle = '#18181b';
+      ctx.fill();
+
+      ctx.restore();
+    }
+
+    function renderBatPath() {
+      ctx.beginPath();
+      ctx.moveTo(0, -3.5);
+      ctx.lineTo(-2, -6.5);
+      ctx.lineTo(-3.5, -3.5);
+      ctx.bezierCurveTo(-7, -5.5, -11, -4.5, -14, -2.5);
+      ctx.bezierCurveTo(-12, -0.5, -10, 0.5, -8.5, 0);
+      ctx.bezierCurveTo(-7, 1.5, -5.5, 2.5, -4, 2.8);
+      ctx.bezierCurveTo(-2.5, 2, -1.5, 3.2, -1, 4);
+      ctx.lineTo(0, 2.8);
+      ctx.lineTo(1, 4);
+      ctx.bezierCurveTo(1.5, 3.2, 2.5, 2, 4, 2.8);
+      ctx.bezierCurveTo(5.5, 2.5, 7, 1.5, 8.5, 0);
+      ctx.bezierCurveTo(10, 0.5, 12, -0.5, 14, -2.5);
+      ctx.bezierCurveTo(11, -4.5, 7, -5.5, 3.5, -3.5);
+      ctx.lineTo(2, -6.5);
+      ctx.closePath();
+    }
+
+    function drawBatarang(cx, cy, scale, alpha) {
+      if (alpha <= 0.005) return;
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.scale(scale, scale);
+      ctx.globalAlpha = alpha;
+
+      if (BATARANG_IMG.complete && BATARANG_IMG.naturalWidth > 0) {
+        const w = BATARANG_IMG.naturalWidth;
+        const h = BATARANG_IMG.naturalHeight;
+        ctx.drawImage(BATARANG_IMG, -w / 2, -h / 2, w, h);
+      } else {
+        traceBatarangOutline(1);
+        ctx.fillStyle = '#18181b';
+        ctx.fill();
+      }
+
+      ctx.restore();
+    }
+
+    function drawShard(s, x, y, rot, alpha) {
+      if (alpha <= 0.01) return;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+
+      ctx.save();
+      ctx.translate(x + 2, y + 5);
+      ctx.rotate(rot);
+      ctx.beginPath();
+      ctx.moveTo(s.pts[0].x, s.pts[0].y);
+      for (let i = 1; i < s.pts.length; i++) ctx.lineTo(s.pts[i].x, s.pts[i].y);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.14)';
+      ctx.fill();
+      ctx.restore();
+
+      ctx.translate(x, y);
+      ctx.rotate(rot);
+      ctx.beginPath();
+      ctx.moveTo(s.pts[0].x, s.pts[0].y);
+      for (let i = 1; i < s.pts.length; i++) ctx.lineTo(s.pts[i].x, s.pts[i].y);
+      ctx.closePath();
+      const grad = ctx.createLinearGradient(-10, -10, 10, 10);
+      grad.addColorStop(0, '#3f3f46');
+      grad.addColorStop(1, '#18181b');
+      ctx.fillStyle = grad;
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(113, 113, 122, 0.4)';
+      ctx.lineWidth = 0.5;
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    const easeOutCubic = (v) => 1 - Math.pow(1 - Math.max(0, Math.min(1, v)), 3);
+    const easeInCubic = (v) => Math.pow(Math.max(0, Math.min(1, v)), 3);
+    const easeInOutCubic = (v) => {
+      v = Math.max(0, Math.min(1, v));
+      return v < 0.5 ? 4 * v * v * v : 1 - Math.pow(-2 * v + 2, 3) / 2;
+    };
+    const easeOutBack = (v) => {
+      v = Math.max(0, Math.min(1, v));
+      const c = 1.70158;
+      return 1 + (c + 1) * Math.pow(v - 1, 3) + c * Math.pow(v - 1, 2);
+    };
+
+    const D_NIBBLE = 0.9;
+    const D_SHATTER = 0.5;
+    const D_SWIRL = 1.2;
+    const D_CONVERGE = 0.8;
+    const D_BURST = 0.5;
+    const D_BSWIRL = 1.1;
+    const D_REFORM = 0.9;
+
+    function animate(now) {
+      if (!lastTime) lastTime = now;
+      const dt = Math.min((now - lastTime) / 1000, 0.05);
+      lastTime = now;
+      t += dt;
+
+      ctx.clearRect(0, 0, W, H);
+
+      if (state === 'idle') {
+        drawButton(1);
+      } else if (state === 'forward') {
+        renderForward(dt);
+      } else if (state === 'batarang') {
+        drawBatarang(CX, CY, 1, 1);
+      } else if (state === 'reverse') {
+        renderReverse(dt);
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    function renderForward(dt) {
+      const p1 = t / D_NIBBLE;
+      const p2 = (t - D_NIBBLE) / D_SHATTER;
+      const p3 = (t - D_NIBBLE - D_SHATTER) / D_SWIRL;
+      const p4 = (t - D_NIBBLE - D_SHATTER - D_SWIRL) / D_CONVERGE;
+
+      if (p2 < 0.8) {
+        const activeBites = [];
+        if (p1 >= 0) {
+          const biteCount = Math.min(NUM_BATS, Math.floor(easeOutCubic(p1) * NUM_BATS * 1.2));
+          for (let i = 0; i < biteCount && i < NUM_BATS; i++) {
+            const b = bats[i];
+            activeBites.push({
+              x: b.startX,
+              y: b.startY,
+              r: b.biteRadius * easeOutCubic(Math.min(1, p1 * 1.4))
+            });
+          }
+        }
+        const btnAlpha = p2 >= 0 ? Math.max(0, 1 - easeInCubic(p2 * 2.2)) : 1;
+        drawButton(btnAlpha, activeBites);
+      }
+
+      if (p2 >= 0 && p2 <= 1.2) {
+        for (const s of shards) {
+          const sp = (p2 - s.delay) / (1 - s.delay);
+          if (sp <= 0) continue;
+          const e = easeOutCubic(Math.min(1, sp));
+          const sx = s.startX + (s.targetX - s.startX) * e;
+          const sy = s.startY + (s.targetY - s.startY) * e;
+          const sa = Math.max(0, 1 - easeInCubic(sp * 1.1));
+          drawShard(s, sx, sy, s.rotSpeed * sp * 2, sa);
+        }
+      }
+
+      for (let i = 0; i < NUM_BATS; i++) {
+        const b = bats[i];
+        let bx, by, alpha = 0, rot, flap;
+
+        if (p4 >= 0) {
+          const prog = easeInOutCubic(Math.min(1, Math.max(0, (p4 - i * 0.008) / 0.85)));
+          bx = b.x + (b.targetX - b.x) * prog;
+          by = b.y + (b.targetY - b.y) * prog;
+          rot = b.rot + b.rotSpeed * t * (1 - prog);
+          flap = Math.sin(b.flapPhase + t * b.flapSpeed) * (1 - prog);
+          alpha = prog > 0.75 ? Math.max(0, 1 - (prog - 0.75) / 0.25) : 1;
+        } else if (p3 >= 0) {
+          b.orbitAngle += b.orbitSpeed * dt;
+          const targetR = 72 + Math.sin(b.orbitAngle * 1.5 + i * 0.4) * 22;
+          b.orbitRadius += (targetR - b.orbitRadius) * 0.06;
+          bx = CX + Math.cos(b.orbitAngle) * b.orbitRadius;
+          by = CY + Math.sin(b.orbitAngle) * b.orbitRadius * 0.78;
+          b.x = bx;
+          b.y = by;
+          rot = b.rot + b.rotSpeed * t;
+          flap = Math.sin(b.flapPhase + t * b.flapSpeed);
+          alpha = 1;
+        } else if (p2 >= 0) {
+          const prog = easeOutCubic(Math.min(1, Math.max(0, (p2 - i * 0.01) / 0.8)));
+          bx = b.startX + (b.burstX - b.startX) * prog;
+          by = b.startY + (b.burstY - b.startY) * prog;
+          b.x = bx;
+          b.y = by;
+          rot = b.rot + b.rotSpeed * t;
+          flap = Math.sin(b.flapPhase + t * b.flapSpeed);
+          alpha = Math.min(1, prog * 4);
+          b.orbitAngle = Math.atan2(by - CY, bx - CX);
+          b.orbitRadius = Math.hypot(bx - CX, by - CY);
+        } else if (p1 >= 0) {
+          const peelProg = (p1 - b.peelDelay) / 0.35;
+          if (peelProg <= 0) continue;
+          const ep = easeOutCubic(Math.min(1, peelProg));
+          const angle = Math.atan2(b.startY - CY, b.startX - CX);
+          bx = b.startX + Math.cos(angle) * 26 * ep;
+          by = b.startY + Math.sin(angle) * 26 * ep;
+          rot = angle + Math.PI / 2 + b.rotSpeed * t * 0.4;
+          flap = Math.sin(b.flapPhase + t * b.flapSpeed) * ep;
+          alpha = ep;
+        }
+
+        if (alpha > 0.01) {
+          drawBatVector(bx, by, b.size, rot, alpha, flap);
+        }
+      }
+
+      if (p4 >= 0.35) {
+        const bp = (p4 - 0.35) / 0.65;
+        const bAlpha = easeInCubic(bp);
+        const bScale = 0.72 + 0.28 * easeOutBack(bp);
+        drawBatarang(CX, CY, bScale, bAlpha);
+      }
+
+      if (p4 >= 1) {
+        state = 'batarang';
+        t = 0;
+        hint.textContent = 'Click to reconstruct';
+      }
+    }
+
+    function renderReverse(dt) {
+      const p1 = t / D_BURST;
+      const p2 = (t - D_BURST) / D_BSWIRL;
+      const p3 = (t - D_BURST - D_BSWIRL) / D_REFORM;
+
+      if (p1 < 0.7) {
+        const bAlpha = Math.max(0, 1 - easeInCubic(p1 * 2.5));
+        drawBatarang(CX, CY, 1 + p1 * 0.14, bAlpha);
+      }
+
+      for (let i = 0; i < NUM_BATS; i++) {
+        const b = bats[i];
+        let bx, by, alpha = 0, rot, flap;
+
+        if (p3 >= 0) {
+          const prog = easeInOutCubic(Math.min(1, Math.max(0, (p3 - i * 0.008) / 0.85)));
+          bx = b.x + (b.startX - b.x) * prog;
+          by = b.y + (b.startY - b.y) * prog;
+          rot = b.rot + b.rotSpeed * t * (1 - prog);
+          flap = Math.sin(b.flapPhase + t * b.flapSpeed) * (1 - prog);
+          alpha = prog > 0.7 ? Math.max(0, 1 - (prog - 0.7) / 0.3) : 1;
+        } else if (p2 >= 0) {
+          b.orbitAngle += b.orbitSpeed * dt;
+          const targetR = 70 + Math.sin(b.orbitAngle * 1.5 + i * 0.4) * 22;
+          b.orbitRadius += (targetR - b.orbitRadius) * 0.06;
+          bx = CX + Math.cos(b.orbitAngle) * b.orbitRadius;
+          by = CY + Math.sin(b.orbitAngle) * b.orbitRadius * 0.78;
+          b.x = bx;
+          b.y = by;
+          rot = b.rot + b.rotSpeed * t;
+          flap = Math.sin(b.flapPhase + t * b.flapSpeed);
+          alpha = 1;
+        } else if (p1 >= 0) {
+          const prog = easeOutCubic(Math.min(1, Math.max(0, (p1 - i * 0.01) / 0.8)));
+          bx = b.targetX + (b.burstX - b.targetX) * prog;
+          by = b.targetY + (b.burstY - b.targetY) * prog;
+          b.x = bx;
+          b.y = by;
+          rot = b.rotSpeed * t;
+          flap = Math.sin(b.flapPhase + t * b.flapSpeed);
+          alpha = Math.min(1, prog * 4);
+          b.orbitAngle = Math.atan2(by - CY, bx - CX);
+          b.orbitRadius = Math.hypot(bx - CX, by - CY);
+        }
+
+        if (alpha > 0.01) {
+          drawBatVector(bx, by, b.size, rot, alpha, flap);
+        }
+      }
+
+      if (p3 >= 0 && p3 <= 0.8) {
+        for (const s of shards) {
+          const sp = Math.min(1, Math.max(0, (p3 - s.delay * 0.5) / 0.7));
+          if (sp <= 0.02 || sp >= 0.95) continue;
+          const prog = easeInOutCubic(sp);
+          const sx = s.targetX + (s.startX - s.targetX) * prog;
+          const sy = s.targetY + (s.startY - s.targetY) * prog;
+          const sa = (1 - prog) * 0.65;
+          drawShard(s, sx, sy, s.rotSpeed * (1 - prog), sa);
+        }
+      }
+
+      if (p3 >= 0.3) {
+        const bp = (p3 - 0.3) / 0.7;
+        drawButton(easeOutCubic(bp));
+      }
+
+      if (p3 >= 1) {
+        state = 'idle';
+        t = 0;
+        hint.textContent = 'Click to summon';
+      }
+    }
+
+    canvas.addEventListener('click', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const mx = (e.clientX - rect.left) * (W / rect.width);
+      const my = (e.clientY - rect.top) * (H / rect.height);
+
+      if (state === 'idle') {
+        if (mx >= BX && mx <= BX + BW && my >= BY && my <= BY + BH) {
+          initBats();
+          state = 'forward';
+          t = 0;
+          hint.textContent = '';
+        }
+      } else if (state === 'batarang') {
+        const dist = Math.hypot(mx - CX, my - CY);
+        if (dist < 140) {
+          state = 'reverse';
+          t = 0;
+          hint.textContent = '';
+        }
+      }
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const mx = (e.clientX - rect.left) * (W / rect.width);
+      const my = (e.clientY - rect.top) * (H / rect.height);
+
+      if (state === 'idle') {
+        const onButton = (mx >= BX && mx <= BX + BW && my >= BY && my <= BY + BH);
+        canvas.style.cursor = onButton ? 'pointer' : 'default';
+      } else if (state === 'batarang') {
+        const onBatarang = Math.hypot(mx - CX, my - CY) < 140;
+        canvas.style.cursor = onBatarang ? 'pointer' : 'default';
+      } else {
+        canvas.style.cursor = 'default';
+      }
+    });
+
+    requestAnimationFrame(animate);
+  })();
+  </script>
+</body>
+</html>
